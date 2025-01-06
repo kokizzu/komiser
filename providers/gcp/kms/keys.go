@@ -7,12 +7,12 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	kmspb "cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/sirupsen/logrus"
 	"github.com/tailwarden/komiser/models"
 	"github.com/tailwarden/komiser/providers"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 func Keys(ctx context.Context, client providers.ProviderClient) ([]models.Resource, error) {
@@ -37,8 +37,13 @@ func Keys(ctx context.Context, client providers.ProviderClient) ([]models.Resour
 			break
 		}
 		if err != nil {
-			logrus.WithError(err).Errorf("failed to list key rings")
-			return resources, err
+			if strings.Contains(err.Error(), "SERVICE_DISABLED") {
+				logrus.Warn(err.Error())
+				return resources, nil
+			} else {
+				logrus.WithError(err).Errorf("failed to list key rings")
+				return resources, err
+			}
 		}
 		if keyRing == nil {
 			continue

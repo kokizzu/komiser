@@ -18,8 +18,7 @@ import (
 )
 
 func (handler *ApiHandler) DownloadInventoryCSV(c *gin.Context) {
-	resources := make([]models.Resource, 0)
-	err := handler.db.NewSelect().Table("resources").Scan(handler.ctx, &resources)
+	resources, err := handler.ctrl.ListResources(c)
 	if err != nil {
 		logrus.WithError(err).Error("Could not read from DB")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cloud not read from DB"})
@@ -36,8 +35,7 @@ func (handler *ApiHandler) DownloadInventoryCSV(c *gin.Context) {
 func (handler *ApiHandler) DownloadInventoryCSVForView(c *gin.Context) {
 	viewId := c.Param("viewId")
 
-	view := new(models.View)
-	err := handler.db.NewSelect().Model(view).Where("id = ?", viewId).Scan(handler.ctx)
+	view, err := handler.ctrl.GetView(c, viewId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -245,7 +243,7 @@ func respondWithCSVDownload(resources []models.Resource, c *gin.Context) {
 	fw := bufio.NewWriter(file)
 	csvWriter := csv.NewWriter(fw)
 
-	header := []string{"id", "provider", "account", "name", "region", "tags", "cost"}
+	header := []string{"id", "provider", "account", "name", "service", "region", "tags", "cost", "metadata"}
 	if err := csvWriter.Write(header); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not write csv"})
 		return
@@ -256,9 +254,13 @@ func respondWithCSVDownload(resources []models.Resource, c *gin.Context) {
 		if err != nil {
 			log.Fatalf("Could not marshal tags")
 		}
+		metadata, err := json.Marshal(record.Metadata)
+		if err != nil {
+			log.Fatalf("Could not marshal metadata")
+		}
 
 		row := []string{
-			record.ResourceId, record.Provider, record.Account, record.Name, record.Region, string(tags), fmt.Sprintf("%2.f", record.Cost),
+			record.ResourceId, record.Provider, record.Account, record.Name, record.Service, record.Region, string(tags), fmt.Sprintf("%2.f", record.Cost), string(metadata),
 		}
 		if err := csvWriter.Write(row); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not write csv"})

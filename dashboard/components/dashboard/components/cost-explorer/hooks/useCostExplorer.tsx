@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import settingsService from '../../../../../services/settingsService';
 import dateHelper, {
+  thisMonth,
   lastMonth,
   lastSixMonths,
   lastThreeMonths,
@@ -20,9 +21,11 @@ export type CostExplorerQueryGroupProps =
   | 'service'
   | 'region'
   | 'account'
-  | 'view';
+  | 'view'
+  | 'Resource';
 export type CostExplorerQueryGranularityProps = 'monthly' | 'daily';
 export type CostExplorerQueryDateProps =
+  | 'thisMonth'
   | 'lastMonth'
   | 'lastThreeMonths'
   | 'lastSixMonths'
@@ -58,6 +61,9 @@ function useCostExplorer() {
     let startDate = '';
     let endDate = '';
 
+    if (queryDate === 'thisMonth') {
+      [startDate, endDate] = thisMonth;
+    }
     if (queryDate === 'lastMonth') {
       [startDate, endDate] = lastMonth;
     }
@@ -71,7 +77,7 @@ function useCostExplorer() {
       [startDate, endDate] = lastTwelveMonths;
     }
 
-    const granularity = newGranularity.toUpperCase();
+    const granularity = queryGranularity.toUpperCase();
     const payload = {
       group: queryGroup,
       granularity,

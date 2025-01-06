@@ -1,10 +1,12 @@
+import { ToastProps } from '@components/toast/Toast';
 import { NextRouter } from 'next/router';
 import { ChangeEvent } from 'react';
+import Avatar from '@components/avatar/Avatar';
+import ErrorIcon from '@components/icons/ErrorIcon';
+import { checkIfServiceIsSupported } from '@utils/serviceHelper';
 import formatNumber from '../../../utils/formatNumber';
-import providers from '../../../utils/providerHelper';
 import Checkbox from '../../checkbox/Checkbox';
 import SkeletonInventory from '../../skeleton/SkeletonInventory';
-import { ToastProps } from '../../toast/hooks/useToast';
 import {
   InventoryItem,
   InventoryStats
@@ -32,7 +34,7 @@ type InventoryTableProps = {
   searchedLoading: boolean;
   hideResourceFromCustomView: () => void;
   hideResourcesLoading: boolean;
-  setToast: (toast: ToastProps | undefined) => void;
+  showToast: (toast: ToastProps) => void;
 };
 
 function InventoryTable({
@@ -52,7 +54,7 @@ function InventoryTable({
   searchedLoading,
   hideResourceFromCustomView,
   hideResourcesLoading,
-  setToast
+  showToast
 }: InventoryTableProps) {
   return (
     <>
@@ -63,7 +65,7 @@ function InventoryTable({
             query={query}
             setQuery={setQuery}
             error={error}
-            setToast={setToast}
+            showToast={showToast}
           />
           <div className="rounded-lg rounded-t-none pb-6">
             <table className="w-full table-auto bg-white text-left text-sm text-gray-900">
@@ -79,12 +81,12 @@ function InventoryTable({
                       </div>
                     </th>
                     <th className="pl-2 pr-6">Cloud</th>
-                    <th className="py-4 px-6">Service</th>
-                    <th className="py-4 px-6">Name</th>
-                    <th className="py-4 px-6">Region</th>
-                    <th className="py-4 px-6">Account</th>
-                    <th className="py-4 px-6 text-right">Cost</th>
-                    <th className="py-4 px-6">Tags</th>
+                    <th className="px-6 py-4">Service</th>
+                    <th className="px-6 py-4">Name</th>
+                    <th className="px-6 py-4">Region</th>
+                    <th className="px-6 py-4">Account</th>
+                    <th className="px-6 py-4 text-right">Cost</th>
+                    <th className="px-6 py-4">Tags</th>
                   </tr>
                 </thead>
               )}
@@ -118,51 +120,72 @@ function InventoryTable({
                         className="min-w-[7rem] cursor-pointer py-4 pl-2 pr-6"
                       >
                         <div className="flex items-center gap-3">
-                          <picture className="flex-shrink-0">
-                            <img
-                              src={providers.providerImg(item.provider)}
-                              className="h-6 w-6 rounded-full"
-                              alt={item.provider}
-                            />
-                          </picture>
+                          <Avatar avatarName={item.provider} />
                           <span>{item.provider}</span>
                         </div>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         <p className="w-12 xl:w-full">{item.service}</p>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="group relative cursor-pointer py-4 px-6"
+                        className="group relative cursor-pointer px-6 py-4"
                       >
                         <div className="peer h-full w-full"></div>
                         <p className="... w-56 truncate 2xl:w-96">
                           {item.name}
                         </p>
-                        <div className="absolute left-4 top-12 z-10 hidden flex-col gap-2 rounded-lg bg-black-900 py-3 px-4 text-xs text-black-200 shadow-lg group-hover:flex">
+                        <div className="absolute left-4 top-12 z-10 hidden flex-col gap-2 rounded-lg bg-gray-950 px-4 py-3 text-xs text-gray-300 shadow-right group-hover:flex">
                           {item.name}
                         </div>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         {item.region}
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         {item.account}
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer whitespace-nowrap py-4 px-6 text-right"
+                        className="cursor-pointer whitespace-nowrap px-6 py-4 text-right"
                       >
-                        ${formatNumber(item.cost)}
+                        {checkIfServiceIsSupported(
+                          item.provider,
+                          item.service
+                        ) ? (
+                          `$${formatNumber(item.cost)}`
+                        ) : (
+                          <div
+                            onClick={e => {
+                              e.stopPropagation();
+                              window.open(
+                                'https://www.tailwarden.com/',
+                                '_blank'
+                              );
+                            }}
+                            className="group relative"
+                          >
+                            <ErrorIcon
+                              className="inline relative left-1"
+                              width={24}
+                              height={24}
+                            />
+                            <div className="animate-fade-in-up text-left right-2 -top-14 absolute z-[999] hidden flex-col gap-2 rounded-lg bg-gray-950 px-4 py-3 text-xs text-gray-300 shadow-right group-hover:block">
+                              Service-level cost analysis is not available in
+                              Komiser.<br></br>For advanced insights, try
+                              Tailwarden.
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <InventoryTableTags
@@ -203,51 +226,72 @@ function InventoryTable({
                         className="min-w-[7rem] cursor-pointer py-4 pl-2 pr-6"
                       >
                         <div className="flex items-center gap-3">
-                          <picture className="flex-shrink-0">
-                            <img
-                              src={providers.providerImg(item.provider)}
-                              className="h-6 w-6 rounded-full"
-                              alt={item.provider}
-                            />
-                          </picture>
+                          <Avatar avatarName={item.provider} />
                           <span>{item.provider}</span>
                         </div>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         <p className="w-12 xl:w-full">{item.service}</p>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="group relative cursor-pointer py-4 px-6"
+                        className="group relative cursor-pointer px-6 py-4"
                       >
                         <div className="peer h-full w-full"></div>
                         <p className="... w-56 truncate 2xl:w-96">
                           {item.name}
                         </p>
-                        <div className="absolute left-4 top-12 z-10 hidden flex-col gap-2 rounded-lg bg-black-900 py-3 px-4 text-xs text-black-200 shadow-lg group-hover:flex">
+                        <div className="absolute left-4 top-12 z-10 hidden flex-col gap-2 rounded-lg bg-gray-950 px-4 py-3 text-xs text-gray-300 shadow-right group-hover:flex">
                           {item.name}
                         </div>
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         {item.region}
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer py-4 px-6"
+                        className="cursor-pointer px-6 py-4"
                       >
                         {item.account}
                       </td>
                       <td
                         onClick={() => openModal(item)}
-                        className="cursor-pointer whitespace-nowrap py-4 px-6 text-right"
+                        className="cursor-pointer whitespace-nowrap px-6 py-4 text-right"
                       >
-                        ${formatNumber(item.cost)}
+                        {checkIfServiceIsSupported(
+                          item.provider,
+                          item.service
+                        ) ? (
+                          `$${formatNumber(item.cost)}`
+                        ) : (
+                          <div
+                            onClick={e => {
+                              e.stopPropagation();
+                              window.open(
+                                'https://www.tailwarden.com/',
+                                '_blank'
+                              );
+                            }}
+                            className="group relative"
+                          >
+                            <ErrorIcon
+                              className="inline relative left-1"
+                              width={24}
+                              height={24}
+                            />
+                            <div className="animate-fade-in-up text-left right-2 -top-14 absolute z-[999] hidden flex-col gap-2 rounded-lg bg-gray-950 px-4 py-3 text-xs text-gray-300 shadow-right group-hover:block">
+                              Service-level cost analysis is not available in
+                              Komiser.<br></br>For advanced insights, try
+                              Tailwarden.
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <InventoryTableTags

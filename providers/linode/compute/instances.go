@@ -14,15 +14,19 @@ import (
 	"github.com/tailwarden/komiser/providers"
 )
 
-func Linodes(ctx context.Context, client providers.ProviderClient) ([]Resource, error) {
-	resources := make([]Resource, 0)
-
-	instances, err := client.LinodeClient.ListInstances(ctx, &linodego.ListOptions{})
+func LinodeInstancesAndInstanceDisks(ctx context.Context, client providers.ProviderClient) ([]Resource, error) {
+	linodeInstances, err := client.LinodeClient.ListInstances(ctx, &linodego.ListOptions{
+		PageOptions: &linodego.PageOptions{},
+		PageSize:    0,
+		Filter:      "",
+	})
 	if err != nil {
-		return resources, err
+		return nil, err
 	}
 
-	for _, instance := range instances {
+	resources := make([]Resource, 0)
+	for _, instance := range linodeInstances {
+
 		tags := make([]Tag, 0)
 		for _, tag := range instance.Tags {
 			if strings.Contains(tag, ":") {
@@ -42,7 +46,7 @@ func Linodes(ctx context.Context, client providers.ProviderClient) ([]Resource, 
 		resources = append(resources, models.Resource{
 			Provider:   "Linode",
 			Account:    client.Name,
-			Service:    "Linode",
+			Service:    "Linode Instance",
 			Region:     instance.Region,
 			ResourceId: fmt.Sprintf("%d", instance.ID),
 			Cost:       0,
@@ -52,12 +56,32 @@ func Linodes(ctx context.Context, client providers.ProviderClient) ([]Resource, 
 			Tags:       tags,
 			Link:       fmt.Sprintf("https://cloud.linode.com/linodes/%d", instance.ID),
 		})
+
+		instanceDisks, err := client.LinodeClient.ListInstanceDisks(ctx, instance.ID, &linodego.ListOptions{})
+		if err != nil {
+			return resources, err
+		}
+
+		for _, disk := range instanceDisks {
+			resources = append(resources, models.Resource{
+				Provider:   "Linode",
+				Account:    client.Name,
+				Service:    "Linode Instance Disk",
+				Region:     instance.Region,
+				ResourceId: fmt.Sprintf("%d", disk.ID),
+				Cost:       0,
+				Name:       disk.Label,
+				FetchedAt:  time.Now(),
+				CreatedAt:  *disk.Created,
+				Link:       fmt.Sprintf("https://cloud.linode.com/linodes/%d/storage", instance.ID),
+			})
+		}
 	}
 
 	log.WithFields(log.Fields{
 		"provider":  "Linode",
 		"account":   client.Name,
-		"service":   "Linode",
+		"service":   "Linode Instance and Instance Disk",
 		"resources": len(resources),
 	}).Info("Fetched resources")
 	return resources, nil

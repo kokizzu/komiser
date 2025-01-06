@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import { ErrorIcon } from '@components/icons';
 import formatNumber from '../../../utils/formatNumber';
 import Tooltip from '../../tooltip/Tooltip';
 import {
@@ -8,6 +9,7 @@ import {
 
 type InventoryStatsCardsProps = {
   inventoryStats: InventoryStats | undefined;
+  isSomeServiceUnavailable: boolean | undefined;
   error: boolean;
   statsLoading: boolean;
   hiddenResources: HiddenResource[] | undefined;
@@ -15,6 +17,7 @@ type InventoryStatsCardsProps = {
 
 function InventoryStatsCards({
   inventoryStats,
+  isSomeServiceUnavailable,
   error,
   statsLoading,
   hiddenResources
@@ -31,10 +34,10 @@ function InventoryStatsCards({
           <div
             className={`grid-col grid md:grid-cols-2 ${
               router.query.view ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-            } gap-8`}
+            } gap-8 ${isSomeServiceUnavailable ? 'mt-8' : ''}`}
           >
-            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  py-8  px-6 text-black-900 transition-colors">
-              <div className=" rounded-lg bg-komiser-100 p-4">
+            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  px-6  py-8 text-gray-950 transition-colors">
+              <div className=" rounded-lg bg-gray-50 p-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -63,12 +66,12 @@ function InventoryStatsCards({
                 <p className="text-xl font-medium">
                   {formatNumber(inventoryStats.resources, 'full')}
                 </p>
-                <p className="text-sm text-black-300">Resources</p>
+                <p className="text-sm text-gray-500">Resources</p>
               </div>
               <Tooltip>Number of active cloud services</Tooltip>
             </div>
-            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  py-8  px-6 text-black-900 transition-colors">
-              <div className=" rounded-lg bg-komiser-100 p-4">
+            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  px-6  py-8 text-gray-950 transition-colors">
+              <div className=" rounded-lg bg-gray-50 p-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -102,14 +105,14 @@ function InventoryStatsCards({
               </div>
               <div className="peer flex flex-col">
                 <p className="text-xl font-medium">{inventoryStats.regions}</p>
-                <p className="text-sm text-black-300">Regions</p>
+                <p className="text-sm text-gray-500">Regions</p>
               </div>
               <Tooltip>
                 Number of regions where you have active cloud services
               </Tooltip>
             </div>
-            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  py-8  px-6 text-black-900 transition-colors">
-              <div className=" rounded-lg bg-komiser-100 p-4">
+            <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  px-6  py-8 text-gray-950 transition-colors">
+              <div className=" rounded-lg bg-gray-50 p-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -138,13 +141,32 @@ function InventoryStatsCards({
                 <p className="text-xl font-medium">
                   ${formatNumber(inventoryStats.costs)}
                 </p>
-                <p className="text-sm text-black-300">Cost</p>
+                <p className="text-sm text-gray-500">Discoverd Cost</p>
               </div>
+              {isSomeServiceUnavailable && (
+                <div
+                  onClick={() =>
+                    window.open('https://www.tailwarden.com/', '_blank')
+                  }
+                  className="rounded-s absolute -top-[22px] -right-[22px] bg-white w-[44px] h-[44px] flex justify-center items-center border-2 border-gray-50"
+                >
+                  <ErrorIcon
+                    className="inline peer cursor-pointer"
+                    width={24}
+                    height={24}
+                  />
+                  <Tooltip align="right" width="xl" bottom="sm" top="xs">
+                    We couldn&apos;t determine the exact cost of your resources
+                    as some cloud providers service&apos;s costs are not yet
+                    supported — we suggest trying Tailwarden.
+                  </Tooltip>
+                </div>
+              )}
               <Tooltip>Up-to-date monthly cost</Tooltip>
             </div>
             {router.query.view && hiddenResources && (
-              <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  py-8  px-6 text-black-900 transition-colors">
-                <div className=" rounded-lg bg-komiser-100 p-4">
+              <div className="relative flex w-full items-center gap-4 rounded-lg bg-white  px-6  py-8 text-gray-950 transition-colors">
+                <div className=" rounded-lg bg-gray-50 p-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -180,7 +202,7 @@ function InventoryStatsCards({
                   <p className="text-xl font-medium">
                     {formatNumber(hiddenResources.length)}
                   </p>
-                  <p className="text-sm text-black-300">Hidden resources</p>
+                  <p className="text-sm text-gray-500">Hidden resources</p>
                 </div>
                 <Tooltip>
                   Resources that will be hidden from the inventory

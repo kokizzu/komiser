@@ -21,7 +21,9 @@ type Poses =
   | 'shirt'
   | 'whiteboard'
   | 'thinking'
-  | 'working';
+  | 'working'
+  | 'devops'
+  | 'tablet';
 
 export type EmptyStateProps = {
   title: string;
@@ -55,8 +57,8 @@ function EmptyState({
           />
         )}
         <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-xl font-semibold text-black-900">{title}</p>
-          <p className="text-sm text-black-400">{message}</p>
+          <p className="text-xl font-semibold text-gray-950">{title}</p>
+          <p className="text-sm text-gray-700">{message}</p>
         </div>
         {action && (
           <div className="flex flex-wrap-reverse items-center gap-4 sm:flex-nowrap">

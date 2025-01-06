@@ -9,11 +9,21 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
+	"github.com/aws/aws-sdk-go-v2/service/autoscaling/types"
+	"github.com/tailwarden/komiser/models"
 	. "github.com/tailwarden/komiser/models"
 	. "github.com/tailwarden/komiser/providers"
 )
 
 const AWS_SERVICE_NAME_ASG = "AutoScalingGroup"
+
+type AutoScalingGroupClient interface {
+	DescribeAutoScalingGroups(
+		ctx context.Context,
+		params *autoscaling.DescribeAutoScalingGroupsInput,
+		optFns ...func(*autoscaling.Options),
+	) (*autoscaling.DescribeAutoScalingGroupsOutput, error)
+}
 
 func AutoScalingGroups(ctx context.Context, clientProvider ProviderClient) ([]Resource, error) {
 	client := autoscaling.NewFromConfig(*clientProvider.AWSClient)
@@ -36,7 +46,6 @@ type ASGDiscoverer struct {
 }
 
 func (d ASGDiscoverer) Discover() ([]Resource, error) {
-
 	resources := make([]Resource, 0)
 	var queryInput autoscaling.DescribeAutoScalingGroupsInput
 
@@ -55,6 +64,8 @@ func (d ASGDiscoverer) Discover() ([]Resource, error) {
 				})
 			}
 
+			relations := getASGRelations(asg)
+
 			resources = append(resources, Resource{
 				Provider:   "AWS",
 				Account:    d.AccountName,
@@ -64,6 +75,7 @@ func (d ASGDiscoverer) Discover() ([]Resource, error) {
 				Cost:       0,
 				Name:       *asg.AutoScalingGroupName,
 				FetchedAt:  time.Now(),
+				Relations:  relations,
 				Tags:       tags,
 				Link: fmt.Sprintf(
 					"https://%s.console.aws.amazon.com/ec2/home?region=%s#AutoScalingGroupDetails:id=%s",
@@ -88,4 +100,17 @@ func (d ASGDiscoverer) Discover() ([]Resource, error) {
 		"resources": len(resources),
 	}).Info("Fetched resources")
 	return resources, nil
+}
+
+func getASGRelations(asg types.AutoScalingGroup) (rel []models.Link) {
+	// Get associated EC2 instances
+	for _, instance := range asg.Instances {
+		rel = append(rel, models.Link{
+			ResourceID: *instance.InstanceId,
+			Type:       "EC2",
+			Relation:   "USES",
+		})
+	}
+
+	return rel
 }

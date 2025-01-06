@@ -11,11 +11,13 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	etype "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/pricing"
 	"github.com/aws/aws-sdk-go-v2/service/pricing/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/tailwarden/komiser/models"
 	"github.com/tailwarden/komiser/providers"
+	awsUtils "github.com/tailwarden/komiser/providers/aws/utils"
 	"github.com/tailwarden/komiser/utils"
 )
 
@@ -31,6 +33,11 @@ func Instances(ctx context.Context, client providers.ProviderClient) ([]models.R
 	}
 
 	accountId := stsOutput.Account
+
+	serviceCost, err := awsUtils.GetCostAndUsage(ctx, client.AWSClient.Region, "EC2")
+	if err != nil {
+		log.Warnln("Couldn't fetch EC2 cost and usage:", err)
+	}
 
 	oldRegion := client.AWSClient.Region
 	client.AWSClient.Region = "us-east-1"
@@ -126,12 +133,13 @@ func Instances(ctx context.Context, client providers.ProviderClient) ([]models.R
 
 						//log.Printf("Hourly cost EC2: %f", hourlyCost)
 
-				    }
+					}
 
 					monthlyCost = float64(hourlyUsage) * hourlyCost
 
 				}
 
+				relations := getEC2Relations(&instance, fmt.Sprintf("arn:aws:ec2:%s:%s", client.AWSClient.Region, *accountId))
 				resourceArn := fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", client.AWSClient.Region, *accountId, *instance.InstanceId)
 
 				resources = append(resources, models.Resource{
@@ -145,9 +153,11 @@ func Instances(ctx context.Context, client providers.ProviderClient) ([]models.R
 					FetchedAt:  time.Now(),
 					Cost:       monthlyCost,
 					Tags:       tags,
+					Relations:  relations,
 					Metadata: map[string]string{
 						"instanceType": string(instance.InstanceType),
 						"state":        string(instance.State.Name),
+						"serviceCost": fmt.Sprint(serviceCost),
 					},
 					Link: fmt.Sprintf("https://%s.console.aws.amazon.com/ec2/home?region=%s#InstanceDetails:instanceId=%s", client.AWSClient.Region, client.AWSClient.Region, *instance.InstanceId),
 				})
@@ -168,4 +178,80 @@ func Instances(ctx context.Context, client providers.ProviderClient) ([]models.R
 		"resources": len(resources),
 	}).Info("Fetched resources")
 	return resources, nil
+}
+
+func getEC2Relations(inst *etype.Instance, resourceArn string) []models.Link {
+
+	var rel []models.Link
+	// Get associated security groups
+	for _, sgrp := range inst.SecurityGroups {
+		rel = append(rel, models.Link{
+			ResourceID: *sgrp.GroupId,
+			Type:       "Security Group",
+			Name:       *sgrp.GroupName,
+			Relation:   "USES",
+		})
+	}
+
+	// Get associated volumes
+	for _, blk := range inst.BlockDeviceMappings {
+		id := fmt.Sprintf("%s:volume/%s", resourceArn, *blk.Ebs.VolumeId)
+		rel = append(rel, models.Link{
+			ResourceID: id,
+			Type:       "Elastic Block Storage",
+			Name:       *blk.DeviceName,
+			Relation:   "USES",
+		})
+	}
+
+	if inst.VpcId != nil {
+		// Get associated VPC
+		rel = append(rel, models.Link{
+			ResourceID: fmt.Sprintf("%s:vpc/%s", resourceArn, *inst.VpcId),
+			Type:       "VPC",
+			Name:       *inst.VpcId,
+			Relation:   "USES",
+		})
+	}
+
+	if inst.SubnetId != nil {
+		// Get associated Subnet
+		rel = append(rel, models.Link{
+			ResourceID: fmt.Sprintf("%s:subnet/%s", resourceArn, *inst.SubnetId),
+			Name:       *inst.SubnetId,
+			Type:       "Subnet",
+			Relation:   "USES",
+		})
+	}
+
+	// Get associated Keypair
+	if inst.KeyName != nil {
+		rel = append(rel, models.Link{
+			ResourceID: *inst.KeyName,
+			Name:       *inst.KeyName,
+			Type:       "Key Pair",
+			Relation:   "USES",
+		})
+	}
+
+	// Get associated IAM roles
+	if inst.IamInstanceProfile != nil {
+		rel = append(rel, models.Link{
+			ResourceID: *inst.IamInstanceProfile.Id,
+			Name:       *inst.IamInstanceProfile.Arn,
+			Type:       "IAM Role",
+			Relation:   "USES",
+		})
+	}
+
+	// Get associated network interfaces
+	for _, ei := range inst.NetworkInterfaces {
+		rel = append(rel, models.Link{
+			ResourceID: *ei.NetworkInterfaceId,
+			Name:       *ei.NetworkInterfaceId,
+			Type:       "Network Interface",
+			Relation:   "USES",
+		})
+	}
+	return rel
 }

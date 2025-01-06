@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/getsentry/sentry-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/tailwarden/komiser/internal"
+	"github.com/tailwarden/komiser/internal/config"
 	"github.com/tailwarden/komiser/utils"
 )
 
@@ -28,8 +31,19 @@ var startCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if file == "" {
-			return errors.New("you must specify a config file with '--config PATH'")
+
+		filename, err := filepath.Abs(file)
+		if err != nil {
+			return err
+		}
+
+		if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+			log.Info("unable to use given config file:", err)
+			log.Info("Creating default config file:", config.DefaultFileName)
+			err = config.Create(nil)
+			if err != nil {
+				return err
+			}
 		}
 
 		regions, err := cmd.Flags().GetStringArray("regions")
@@ -59,7 +73,7 @@ var startCmd = &cobra.Command{
 			return err
 		}
 
-		err = internal.Exec(address, port, file, telemetry, analytics, regions, cmd)
+		err = internal.Exec(address, port, filename, telemetry, analytics, regions, cmd)
 		if err != nil {
 			return err
 		}

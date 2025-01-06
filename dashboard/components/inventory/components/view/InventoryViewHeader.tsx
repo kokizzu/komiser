@@ -1,3 +1,4 @@
+import { ToastProps } from '@components/toast/Toast';
 import { NextRouter } from 'next/router';
 import { FormEvent, useState } from 'react';
 import Button from '../../../button/Button';
@@ -10,7 +11,6 @@ import EditIcon from '../../../icons/EditIcon';
 import LinkIcon from '../../../icons/LinkIcon';
 import WarningIcon from '../../../icons/WarningIcon';
 import Modal from '../../../modal/Modal';
-import { ToastProps } from '../../../toast/hooks/useToast';
 import {
   InventoryFilterData,
   View
@@ -35,7 +35,7 @@ type InventoryViewHeaderProps = {
     dropdown?: boolean | undefined,
     viewToBeDeleted?: View | undefined
   ) => void;
-  setToast: (toast: ToastProps | undefined) => void;
+  showToast: (toast: ToastProps) => void;
 };
 
 function InventoryViewHeader({
@@ -46,7 +46,7 @@ function InventoryViewHeader({
   loading,
   deleteView,
   deleteLoading,
-  setToast
+  showToast
 }: InventoryViewHeaderProps) {
   const [dropdownIsOpen, setDropdownIsOpen] = useState(false);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -72,10 +72,10 @@ function InventoryViewHeader({
   );
 
   return (
-    <div className="relative">
+    <div className="absolute -top-14 left-0">
       {currentView && (
         <>
-          <div className="flex items-center gap-2 text-lg font-medium text-black-900">
+          <div className="flex items-center gap-2 text-lg font-medium text-gray-950">
             <span>{currentView.name}</span>
             <Button style="ghost" size="xxs" onClick={openDropdown}>
               <ChevronDownIcon width={16} height={16} />
@@ -88,7 +88,7 @@ function InventoryViewHeader({
                 onClick={closeDropdown}
                 className="fixed inset-0 z-20 hidden animate-fade-in bg-transparent opacity-0 sm:block"
               ></div>
-              <div className="absolute left-0 top-10 z-[21] inline-flex w-[16rem] rounded-lg bg-white p-4 text-sm shadow-xl">
+              <div className="absolute left-0 top-10 z-[21] inline-flex w-[16rem] rounded-lg bg-white p-4 text-sm shadow-right">
                 <div className="flex w-full flex-col gap-1">
                   <Button
                     style="dropdown"
@@ -134,7 +134,7 @@ function InventoryViewHeader({
                     transition={false}
                     onClick={() => {
                       navigator.clipboard.writeText(document.URL);
-                      setToast({
+                      showToast({
                         hasError: false,
                         title: 'Link copied!',
                         message: `${document.URL} has been copied to your clipboard.`
@@ -144,8 +144,8 @@ function InventoryViewHeader({
                     <LinkIcon width={24} height={24} />
                     Copy view link
                   </Button>
-                  <ExportCSV setToast={setToast} />
-                  <span className="m-2 -mx-4 border-b border-black-200/40"></span>
+                  <ExportCSV showToast={showToast} />
+                  <span className="m-2 -mx-4 border-b border-gray-300"></span>
                   <Button
                     style="dropdown"
                     size="sm"
@@ -166,14 +166,14 @@ function InventoryViewHeader({
           <Modal isOpen={modalIsOpen} closeModal={closeDoubleConfirmationModal}>
             <div className="flex w-full flex-col gap-6 rounded-lg">
               <div className="flex flex-col gap-6">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-error-100 text-error-600">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
                   <WarningIcon width={24} height={24} />
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-center text-lg font-medium text-black-900">
+                  <p className="text-center text-lg font-medium text-gray-950">
                     Are you sure you want to delete this view?
                   </p>
-                  <p className="text-sm text-black-400">
+                  <p className="text-sm text-gray-700">
                     This is a permanent action.
                   </p>
                 </div>

@@ -84,12 +84,13 @@ function useCostExplorerChart({
   }; */
 
   const groupBySelect: GroupBySelectProps = {
-    values: ['provider', 'service', 'region', 'account'],
+    values: ['provider', 'service', 'region', 'account','Resource'],
     displayValues: [
       'Cloud provider',
       'Cloud service',
       'Cloud region',
-      'Cloud account'
+      'Cloud account',
+      'Resource'
     ]
   };
 
@@ -100,12 +101,14 @@ function useCostExplorerChart({
 
   const dateSelect = {
     values: [
+      'thisMonth',
       'lastMonth',
       'lastThreeMonths',
       'lastSixMonths',
       'lastTwelveMonths'
     ],
     displayValues: [
+      'This month',
       'Last month',
       'Last 3 months',
       'Last 6 months',

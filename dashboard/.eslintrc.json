@@ -4,12 +4,21 @@
     "next/core-web-vitals",
     "plugin:storybook/recommended",
     "airbnb-base",
-    "prettier"
+    "prettier",
+    "plugin:import/typescript"
   ],
   "env": {
     "jest/globals": true
   },
   "plugins": ["jest", "prettier"],
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "paths": ["src"],
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
   "rules": {
     "react-hooks/exhaustive-deps": "off",
     "prettier/prettier": [

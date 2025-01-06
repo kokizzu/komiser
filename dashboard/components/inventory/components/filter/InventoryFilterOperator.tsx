@@ -54,6 +54,21 @@ const inventoryFilterOperatorCostOptions: InventoryFilterOperatorOptionsProps[] 
     }
   ];
 
+const inventoryFilterRelationsOptions: InventoryFilterOperatorOptionsProps[] = [
+  {
+    label: 'is equal to',
+    value: 'EQUAL'
+  },
+  {
+    label: 'is greater than',
+    value: 'GREATER_THAN'
+  },
+  {
+    label: 'is less than',
+    value: 'LESS_THAN'
+  }
+];
+
 function InventoryFilterOperator({
   data,
   handleOperator,
@@ -63,7 +78,7 @@ function InventoryFilterOperator({
     <div className="flex flex-col">
       {/* If field is tag, ask for tag key */}
       {data.field === 'tag' && (
-        <div className="pl-1 pt-2 pb-2">
+        <div className="pb-2 pl-1 pt-2">
           <Input
             type="text"
             name="tagKey"
@@ -72,6 +87,7 @@ function InventoryFilterOperator({
             error="Please provide a tag key"
             action={handleTagKey}
             autofocus={true}
+            maxLength={64}
           />
         </div>
       )}
@@ -79,6 +95,7 @@ function InventoryFilterOperator({
       {/* Operators list which are not tags or cost */}
       {data.field !== 'tags' &&
         data.field !== 'cost' &&
+        data.field !== 'relations' &&
         inventoryFilterOperatorOptions.map((option, idx) => (
           <Button
             key={idx}
@@ -120,6 +137,18 @@ function InventoryFilterOperator({
         inventoryFilterOperatorCostOptions.map((option, idx) => (
           <Button
             key={idx}
+            style="dropdown"
+            onClick={() => handleOperator(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+
+      {/* Operators list for cost */}
+      {data.field === 'relations' &&
+        inventoryFilterRelationsOptions.map((option, idx) => (
+          <Button
+            key={option.value}
             style="dropdown"
             onClick={() => handleOperator(option.value)}
           >

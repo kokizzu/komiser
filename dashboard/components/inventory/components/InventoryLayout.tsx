@@ -51,7 +51,7 @@ function InventoryLayout({
         <nav
           className={`fixed ${
             displayBanner ? 'mt-[145px]' : 'mt-[73px]'
-          } left-0 bottom-0 top-0 z-20 flex w-[17rem] flex-col gap-4 bg-white p-6`}
+          } bottom-0 left-0 top-0 z-20 flex w-[17rem] flex-col gap-4 bg-white p-6`}
         >
           <button
             onClick={() => {
@@ -60,8 +60,8 @@ function InventoryLayout({
             className={`flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium
               ${
                 !router.query.view
-                  ? 'border-l-2 border-primary bg-komiser-150 text-primary'
-                  : 'text-black-400 transition-colors hover:bg-komiser-100'
+                  ? 'border-l-2 border-darkcyan-500 bg-cyan-100 text-darkcyan-500'
+                  : 'text-gray-700 transition-colors hover:bg-gray-50'
               }
             `}
           >
@@ -75,11 +75,12 @@ function InventoryLayout({
                 <input
                   placeholder="Search views"
                   value={query}
+                  maxLength={64}
                   onChange={e => setQuery(e.target.value)}
-                  className="flex w-full items-center rounded-lg border border-black-200 px-4 py-3 pl-10 text-sm font-medium text-black-400 transition-colors hover:border-black-300 focus-visible:outline-primary"
+                  className="flex w-full items-center rounded-lg border border-gray-300 px-4 py-3 pl-10 text-sm font-medium text-gray-700 transition-colors hover:border-gray-500 focus-visible:outline-darkcyan-500"
                 />
                 <div
-                  className={`absolute top-[0.95rem] left-4 ${
+                  className={`absolute left-4 top-[0.95rem] ${
                     query ? 'cursor-pointer' : ''
                   }`}
                 >
@@ -107,7 +108,7 @@ function InventoryLayout({
                       height="16"
                       fill="none"
                       viewBox="0 0 24 24"
-                      className="hover:bg-black-100"
+                      className="hover:bg-gray-50"
                     >
                       <path
                         stroke="currentColor"
@@ -135,8 +136,8 @@ function InventoryLayout({
                         className={`flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium
               ${
                 isActive
-                  ? 'border-l-2 border-primary bg-komiser-150 text-primary'
-                  : 'text-black-400 transition-colors hover:bg-komiser-100'
+                  ? 'border-l-2 border-darkcyan-500 bg-cyan-100 text-darkcyan-500'
+                  : 'text-gray-700 transition-colors hover:bg-gray-50'
               }
             `}
                       >
@@ -150,7 +151,7 @@ function InventoryLayout({
             </>
           )}
           {query && newView && newView.length === 0 && (
-            <div className="flex items-center text-xs text-black-400">
+            <div className="flex items-center text-xs text-gray-700">
               There are no views with this name.
             </div>
           )}

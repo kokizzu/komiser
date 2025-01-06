@@ -1,23 +1,39 @@
+import { useContext } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useContext } from 'react';
+
+import useFeedbackWidget from '@components/feedback-widget/FeedbackWidget';
 import GlobalAppContext from '../layout/context/GlobalAppContext';
 
+interface NavItem {
+  label: string;
+  href: string;
+}
+
 function Navbar() {
-  const { displayBanner } = useContext(GlobalAppContext);
+  const { displayBanner, betaFlagOnboardingWizard } =
+    useContext(GlobalAppContext);
   const router = useRouter();
-  const nav = [
+  const { openFeedbackModal, FeedbackModal } = useFeedbackWidget();
+
+  // TODO: (onboarding-wizard) Remove the betaFlagOnboardingWizard conditional when feature is stable
+  const nav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Inventory', href: '/inventory' }
-  ];
+    { label: 'Inventory', href: '/inventory' },
+    betaFlagOnboardingWizard
+      ? { label: 'Cloud Accounts', href: '/cloud-accounts' }
+      : null,
+    { label: 'Explorer', href: '/explorer' }
+  ].filter(item => item !== null) as NavItem[];
+
   return (
     <nav
       className={`fixed ${
         displayBanner ? 'top-[72px]' : 'top-0'
-      } z-30 flex w-full items-center justify-between gap-10 border-b border-black-200/30 bg-white py-4 px-6 xl:pr-8 2xl:pr-24`}
+      } z-30 flex w-full items-center justify-between gap-10 border-b border-gray-300 bg-white px-6 py-4 shadow-right xl:pr-8 2xl:pr-24`}
     >
-      <div className="flex items-center gap-8 text-sm font-semibold text-black-400">
+      <div className="flex items-center gap-8 text-sm font-semibold text-gray-700">
         <Link href="/dashboard">
           <Image
             src="/assets/img/komiser.svg"
@@ -32,17 +48,17 @@ function Navbar() {
             href={navItem.href}
             className={
               router.pathname === navItem.href
-                ? 'text-primary'
-                : 'text-black-400'
+                ? 'text-darkcyan-500'
+                : 'text-gray-700'
             }
           >
             {navItem.label}
           </Link>
         ))}
       </div>
-      <div className="flex gap-4 text-sm font-medium text-black-900 lg:gap-10">
+      <div className="flex gap-4 text-sm font-medium text-gray-950 lg:gap-10">
         <a
-          className="hidden items-center gap-2 transition-colors hover:text-primary md:flex"
+          className="hidden items-center gap-2 transition-colors hover:text-darkcyan-500 md:flex"
           href="https://docs.komiser.io/docs/intro?utm_source=komiser&utm_medium=referral&utm_campaign=static"
           target="_blank"
           rel="noopener noreferrer"
@@ -74,8 +90,8 @@ function Navbar() {
           Docs
         </a>
         <a
-          className="hidden items-center gap-2 transition-colors hover:text-primary md:flex"
-          href="https://www.tailwarden.com/changelog?utm_source=komiser&utm_medium=referral&utm_campaign=static"
+          className="hidden items-center gap-2 transition-colors hover:text-darkcyan-500 md:flex"
+          href="https://www.tailwarden.com/changelog/komiser"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -105,10 +121,9 @@ function Navbar() {
           Changelog
         </a>
         <a
-          className="hidden items-center gap-2 transition-colors hover:text-primary md:flex"
-          href="https://tally.so/r/mZjY40"
-          target="_blank"
+          className="hidden cursor-pointer items-center gap-2 transition-colors hover:text-darkcyan-500 md:flex"
           rel="noopener noreferrer"
+          onClick={() => openFeedbackModal()}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -136,7 +151,7 @@ function Navbar() {
           Leave feedback
         </a>
         <a
-          className="flex items-center gap-2 rounded-lg bg-[#5865F2] py-2 px-4 text-white transition-colors hover:bg-[#4f5be2]"
+          className="flex items-center gap-2 rounded-lg bg-[#5865F2] px-4 py-2 text-white transition-colors hover:bg-[#4f5be2]"
           href="https://discord.tailwarden.com"
           target="_blank"
           rel="noopener noreferrer"
@@ -156,6 +171,7 @@ function Navbar() {
           Join our Discord
         </a>
       </div>
+      <FeedbackModal />
     </nav>
   );
 }

@@ -12,63 +12,60 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tailwarden/komiser/models"
 	"github.com/tailwarden/komiser/utils"
+	"github.com/uptrace/bun"
 )
 
 func (handler *ApiHandler) DashboardStatsHandler(c *gin.Context) {
-	regions := struct {
-		Count int `bun:"count" json:"total"`
-	}{}
-
-	err := handler.db.NewRaw("SELECT COUNT(*) as count FROM (SELECT DISTINCT region FROM resources) AS temp").Scan(handler.ctx, &regions)
-	if err != nil {
-		logrus.WithError(err).Error("scan failed")
-	}
-
-	resources := struct {
-		Count int `bun:"count" json:"total"`
-	}{}
-
-	err = handler.db.NewRaw("SELECT COUNT(*) as count FROM resources").Scan(handler.ctx, &resources)
-	if err != nil {
-		logrus.WithError(err).Error("scan failed")
-	}
-
-	cost := struct {
-		Sum float64 `bun:"sum" json:"total"`
-	}{}
-
-	err = handler.db.NewRaw("SELECT SUM(cost) as sum FROM resources").Scan(handler.ctx, &cost)
-	if err != nil {
-		logrus.WithError(err).Error("scan failed")
-	}
-
-	accounts := struct {
-		Count int `bun:"count" json:"total"`
-	}{}
-
-	err = handler.db.NewRaw("SELECT COUNT(*) as count FROM (SELECT DISTINCT account FROM resources) AS temp").Scan(handler.ctx, &accounts)
-	if err != nil {
-		logrus.WithError(err).Error("scan failed")
-	}
-
 	output := struct {
 		Resources int     `json:"resources"`
 		Regions   int     `json:"regions"`
 		Costs     float64 `json:"costs"`
 		Accounts  int     `json:"accounts"`
+	}{}
+
+	if handler.db == nil {
+		c.JSON(http.StatusInternalServerError, output)
+		return
+	}
+
+	regions, err := handler.ctrl.CountRegionsFromResources(c)
+	if err != nil {
+		logrus.WithError(err).Error("scan failed")
+	}
+
+	resources, err := handler.ctrl.CountResources(c, "", "")
+	if err != nil {
+		logrus.WithError(err).Error("scan failed")
+	}
+
+	cost, err := handler.ctrl.SumResourceCost(c)
+	if err != nil {
+		logrus.WithError(err).Error("scan failed")
+	}
+
+	accounts, err := handler.ctrl.CountRegionsFromAccounts(c)
+	if err != nil {
+		logrus.WithError(err).Error("scan failed")
+	}
+
+	output = struct {
+		Resources int     `json:"resources"`
+		Regions   int     `json:"regions"`
+		Costs     float64 `json:"costs"`
+		Accounts  int     `json:"accounts"`
 	}{
-		Resources: resources.Count,
-		Regions:   regions.Count,
-		Costs:     cost.Sum,
-		Accounts:  accounts.Count,
+		Resources: resources.Total,
+		Regions:   regions.Total,
+		Costs:     cost.Total,
+		Accounts:  accounts.Total,
 	}
 
 	if handler.telemetry {
 		handler.analytics.TrackEvent("global_stats", map[string]interface{}{
-			"regions":   regions.Count,
-			"resources": resources.Count,
-			"accounts":  accounts.Count,
-			"cost":      cost.Sum,
+			"regions":   regions.Total,
+			"resources": resources.Total,
+			"accounts":  accounts.Total,
+			"cost":      cost.Total,
 		})
 	}
 
@@ -77,6 +74,11 @@ func (handler *ApiHandler) DashboardStatsHandler(c *gin.Context) {
 
 func (handler *ApiHandler) ResourcesBreakdownStatsHandler(c *gin.Context) {
 	input := models.InputResources{}
+
+	if handler.db == nil {
+		c.JSON(http.StatusInternalServerError, []models.OutputResources{})
+		return
+	}
 
 	err := json.NewDecoder(c.Request.Body).Decode(&input)
 	if err != nil {
@@ -119,9 +121,12 @@ func (handler *ApiHandler) ResourcesBreakdownStatsHandler(c *gin.Context) {
 }
 
 func (handler *ApiHandler) LocationBreakdownStatsHandler(c *gin.Context) {
-	groups := make([]models.OutputResources, 0)
+	if handler.db == nil {
+		c.JSON(http.StatusInternalServerError, []models.OutputLocations{})
+		return
+	}
 
-	err := handler.db.NewRaw("SELECT region as label, COUNT(*) as total FROM resources GROUP BY region ORDER by total desc;").Scan(handler.ctx, &groups)
+	groups, err := handler.ctrl.LocationStatsBreakdown(c)
 	if err != nil {
 		logrus.WithError(err).Error("scan failed")
 	}
@@ -129,7 +134,6 @@ func (handler *ApiHandler) LocationBreakdownStatsHandler(c *gin.Context) {
 	locations := make([]models.OutputLocations, 0)
 
 	for _, group := range groups {
-
 		location := utils.GetLocationFromRegion(group.Label)
 
 		if location.Label != "" {
@@ -149,6 +153,11 @@ func (handler *ApiHandler) LocationBreakdownStatsHandler(c *gin.Context) {
 func (handler *ApiHandler) CostBreakdownHandler(c *gin.Context) {
 	input := models.InputCostBreakdown{}
 
+	if handler.db == nil {
+		c.JSON(http.StatusInternalServerError, []models.OutputCostBreakdown{})
+		return
+	}
+
 	err := json.NewDecoder(c.Request.Body).Decode(&input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -163,14 +172,27 @@ func (handler *ApiHandler) CostBreakdownHandler(c *gin.Context) {
 	}
 
 	if len(input.Exclude) > 0 {
-		s, _ := json.Marshal(input.Exclude)
-		err = handler.db.NewRaw(fmt.Sprintf(`%s %s NOT IN (%s) AND DATE(fetched_at) BETWEEN '%s' AND '%s' GROUP BY %s;`, query, input.Group, strings.Trim(string(s), "[]"), input.Start, input.End, input.Group)).Scan(handler.ctx, &groups)
+		s, err := json.Marshal(input.Exclude)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process exclude list"})
+			return
+		}
+		excludeList := strings.Trim(string(s), "[]")
+		excludeList = strings.ReplaceAll(excludeList, `"`, "'")
+		excludeItems := strings.Split(excludeList, ",")
+		for i := range excludeItems {
+			excludeItems[i] = strings.TrimSpace(excludeItems[i])
+		}
+
+		query = query + ` ? NOT IN ? AND DATE(fetched_at) BETWEEN ? AND ? GROUP BY ?`
+		err = handler.db.NewRaw(query, bun.Ident(input.Group), bun.In(excludeItems), input.Start, input.End, bun.Ident(input.Group)).Scan(handler.ctx, &groups)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	} else {
-		err = handler.db.NewRaw(fmt.Sprintf(`%s DATE(fetched_at) BETWEEN '%s' AND '%s' GROUP BY %s;`, query, input.Start, input.End, input.Group)).Scan(handler.ctx, &groups)
+		query := fmt.Sprintf(`%s DATE(fetched_at) BETWEEN ? AND ? GROUP BY period, ?`, query)
+		err := handler.db.NewRaw(query, input.Start, input.End, bun.Ident(input.Group)).Scan(handler.ctx, &groups)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

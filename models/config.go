@@ -12,6 +12,7 @@ type Config struct {
 	Scaleway     []ScalewayConfig     `toml:"scaleway"`
 	MongoDBAtlas []MongoDBAtlasConfig `toml:"mongodbatlas"`
 	GCP          []GCPConfig          `toml:"gcp"`
+	OVH          []OVHConfig          `toml:"ovh"`
 	Postgres     PostgresConfig       `toml:"postgres,omitempty"`
 	SQLite       SQLiteConfig         `toml:"sqlite"`
 	Slack        SlackConfig          `toml:"slack"`
@@ -45,9 +46,10 @@ type ScalewayConfig struct {
 }
 
 type KubernetesConfig struct {
-	Name     string   `toml:"name"`
-	Path     string   `toml:"path"`
-	Contexts []string `toml:"contexts"`
+	Name            string   `toml:"name"`
+	Path            string   `toml:"path"`
+	Contexts        []string `toml:"contexts"`
+	OpencostBaseUrl string   `toml:"opencostBaseUrl"`
 }
 
 type LinodeConfig struct {
@@ -93,7 +95,16 @@ type GCPConfig struct {
 	ServiceAccountKeyPath string `toml:"serviceAccountKeyPath"`
 }
 
+type OVHConfig struct {
+	Name              string `toml:"name"`
+	Endpoint          string `toml:"endpoint"`
+	ApplicationKey    string `toml:"application_key"`
+	ApplicationSecret string `toml:"application_secret"`
+	ConsumerKey       string `toml:"consumer_key"`
+}
+
 type SlackConfig struct {
 	Webhook   string `toml:"webhook"`
 	Reporting bool   `toml:"reporting"`
+	Host      string `toml:"host"`
 }

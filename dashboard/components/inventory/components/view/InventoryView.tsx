@@ -1,17 +1,17 @@
 import Image from 'next/image';
 import { NextRouter } from 'next/router';
+import { ToastProps } from '@components/toast/Toast';
+import Avatar from '@components/avatar/Avatar';
 import formatNumber from '../../../../utils/formatNumber';
-import providers, { Provider } from '../../../../utils/providerHelper';
+import { Provider } from '../../../../utils/providerHelper';
 import Button from '../../../button/Button';
 import Checkbox from '../../../checkbox/Checkbox';
 import AlertIcon from '../../../icons/AlertIcon';
-import BookmarkIcon from '../../../icons/BookmarkIcon';
 import Input from '../../../input/Input';
 import Sidepanel from '../../../sidepanel/Sidepanel';
 import SidepanelHeader from '../../../sidepanel/SidepanelHeader';
 import SidepanelPage from '../../../sidepanel/SidepanelPage';
 import SidepanelTabs from '../../../sidepanel/SidepanelTabs';
-import { ToastProps } from '../../../toast/hooks/useToast';
 import {
   HiddenResource,
   InventoryFilterData,
@@ -26,7 +26,7 @@ import useViews from './hooks/useViews';
 type InventoryViewProps = {
   filters: InventoryFilterData[] | undefined;
   displayedFilters: InventoryFilterData[] | undefined;
-  setToast: (toast: ToastProps | undefined) => void;
+  showToast: (toast: ToastProps) => void;
   inventoryStats: InventoryStats | undefined;
   router: NextRouter;
   views: View[] | undefined;
@@ -37,7 +37,7 @@ type InventoryViewProps = {
 function InventoryView({
   filters,
   displayedFilters,
-  setToast,
+  showToast,
   inventoryStats,
   router,
   views,
@@ -64,7 +64,7 @@ function InventoryView({
     unhideResources,
     deleteLoading
   } = useViews({
-    setToast,
+    showToast,
     views,
     router,
     getViews,
@@ -79,7 +79,7 @@ function InventoryView({
         views={views}
         router={router}
         saveView={saveView}
-        setToast={setToast}
+        showToast={showToast}
         loading={loading}
         deleteView={deleteView}
         deleteLoading={deleteLoading}
@@ -87,7 +87,7 @@ function InventoryView({
 
       {/* Alerts button */}
       {router.query.view && (
-        <div className="absolute right-0">
+        <div className="w-fit">
           <Button
             style="secondary"
             size="xs"
@@ -105,10 +105,12 @@ function InventoryView({
 
       {/* Save as a view button */}
       {!router.query.view && (
-        <Button size="sm" onClick={() => openModal(filters)}>
-          <BookmarkIcon width={20} height={20} />
-          Save as a view
-        </Button>
+        <div
+          onClick={() => openModal(filters)}
+          className="cursor-pointer font-sans text-[14px] font-semibold text-darkcyan-500"
+        >
+          Save as view
+        </div>
       )}
 
       {/* Sidepanel */}
@@ -152,6 +154,7 @@ function InventoryView({
               value={view.name}
               action={handleChange}
               autofocus={true}
+              maxLength={64}
             />
 
             <div className="ml-auto">
@@ -162,7 +165,7 @@ function InventoryView({
                 disabled={!view.name}
               >
                 {router.query.view ? 'Update view' : 'Save as a view'}{' '}
-                <span className="flex items-center justify-center rounded-lg bg-black-900/20 py-1 px-2 text-xs">
+                <span className="flex items-center justify-center rounded-lg bg-gray-950 px-2 py-1 text-xs">
                   {inventoryStats?.resources}
                 </span>
               </Button>
@@ -171,7 +174,7 @@ function InventoryView({
         </SidepanelPage>
 
         <SidepanelPage page={page} param="alerts">
-          <InventoryViewAlerts viewId={view.id} setToast={setToast} />
+          <InventoryViewAlerts viewId={view.id} showToast={showToast} />
         </SidepanelPage>
 
         <SidepanelPage page={page} param="hidden resources">
@@ -181,7 +184,7 @@ function InventoryView({
                 <table className="w-full table-auto bg-white text-left text-xs text-gray-900">
                   <thead className="bg-white">
                     <tr className="shadow-[inset_0_-1px_0_0_#cfd7d74d]">
-                      <th className="py-4 px-2">
+                      <th className="px-2 py-4">
                         <div className="flex items-center">
                           <Checkbox
                             checked={bulkSelectCheckbox}
@@ -189,26 +192,26 @@ function InventoryView({
                           />
                         </div>
                       </th>
-                      <th className="py-4 px-2">Cloud</th>
-                      <th className="py-4 px-2">Service</th>
-                      <th className="py-4 px-2">Name</th>
-                      <th className="py-4 px-2">Region</th>
-                      <th className="py-4 px-2">Account</th>
-                      <th className="py-4 px-2 text-right">Cost</th>
+                      <th className="px-2 py-4">Cloud</th>
+                      <th className="px-2 py-4">Service</th>
+                      <th className="px-2 py-4">Name</th>
+                      <th className="px-2 py-4">Region</th>
+                      <th className="px-2 py-4">Account</th>
+                      <th className="px-2 py-4 text-right">Cost</th>
                     </tr>
                   </thead>
                   <tbody>
                     {hiddenResources.map(item => (
                       <tr
                         key={item.id}
-                        className={`border-b border-black-200/30 last:border-none ${
+                        className={`border-b border-gray-300 last:border-none ${
                           bulkItems &&
                           bulkItems.find(currentId => currentId === item.id)
-                            ? 'border-black-200/70 bg-komiser-120'
-                            : 'border-black-200/30 bg-white hover:bg-black-100/50'
+                            ? 'border-gray-300 bg-darkcyan-100'
+                            : 'border-gray-300 bg-white hover:bg-gray-50'
                         } border-b last:border-none`}
                       >
-                        <td className="py-4 px-2">
+                        <td className="px-2 py-4">
                           <Checkbox
                             checked={
                               bulkItems &&
@@ -221,29 +224,21 @@ function InventoryView({
                         </td>
                         <td className="py-4 pl-2 pr-6">
                           <div className="flex items-center gap-2">
-                            <picture className="flex-shrink-0">
-                              <img
-                                src={providers.providerImg(
-                                  item.provider as Provider
-                                )}
-                                className="h-6 w-6 rounded-full"
-                                alt={item.provider}
-                              />
-                            </picture>
+                            <Avatar avatarName={item.provider as Provider} />
                             <span>{item.provider}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-2">{item.service}</td>
-                        <td className="py-4 px-2">
+                        <td className="px-2 py-4">{item.service}</td>
+                        <td className="px-2 py-4">
                           <p className="... w-24 truncate">{item.name}</p>
                         </td>
-                        <td className="py-4 px-2">
+                        <td className="px-2 py-4">
                           <p className="... w-24 truncate">{item.region}</p>
                         </td>
-                        <td className="py-4 px-2">
+                        <td className="px-2 py-4">
                           <p className="... w-24 truncate">{item.account}</p>
                         </td>
-                        <td className="py-4 px-2 text-right">
+                        <td className="px-2 py-4 text-right">
                           ${formatNumber(item.cost)}
                         </td>
                       </tr>
@@ -259,7 +254,7 @@ function InventoryView({
                   onClick={unhideResources}
                 >
                   Unhide resources{' '}
-                  <span className="flex items-center justify-center rounded-lg bg-white/10 py-1 px-2 text-xs">
+                  <span className="flex items-center justify-center rounded-lg bg-white/10 px-2 py-1 text-xs">
                     {formatNumber(bulkItems.length)}
                   </span>
                 </Button>
@@ -268,7 +263,7 @@ function InventoryView({
           )}
 
           {hiddenResources && hiddenResources.length === 0 && (
-            <div className="rounded-lg bg-black-100 p-6">
+            <div className="rounded-lg bg-gray-50 p-6">
               <div className="flex flex-col items-center gap-6">
                 <Image
                   src="/assets/img/purplin/dashboard.svg"
@@ -277,10 +272,10 @@ function InventoryView({
                   height={100}
                 />
                 <div className="flex flex-col items-center justify-center gap-2 px-24 text-center">
-                  <p className="font-semibold text-black-900">
+                  <p className="font-semibold text-gray-950">
                     No hidden resources in this view
                   </p>
-                  <p className="text-sm text-black-400">
+                  <p className="text-sm text-gray-700">
                     To hide a resource from this view, select and hide them on
                     the inventory table.
                   </p>

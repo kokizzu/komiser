@@ -1,7 +1,11 @@
+import { useToast } from '@components/toast/ToastProvider';
 import { useRouter } from 'next/router';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import {
+  checkIfServiceIsSupported,
+  checkIsSomeServiceUnavailable
+} from '@utils/serviceHelper';
 import settingsService from '../../../../services/settingsService';
-import useToast from '../../../toast/hooks/useToast';
 import useIsVisible from '../useIsVisible/useIsVisible';
 import getCustomViewInventoryListAndStats from './helpers/getCustomViewInventoryListAndStats';
 import getInventoryListAndStats from './helpers/getInventoryListAndStats';
@@ -23,6 +27,8 @@ import {
 } from './types/useInventoryTypes';
 
 function useInventory() {
+  const [isSomeServiceUnavailable, setIsSomeServiceUnavailable] =
+    useState<boolean>(false);
   const [inventoryStats, setInventoryStats] = useState<InventoryStats>();
   const [inventory, setInventory] = useState<InventoryItem[]>();
   const [error, setError] = useState(false);
@@ -34,7 +40,7 @@ function useInventory() {
   const [shouldFetchMore, setShouldFetchMore] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState<InventoryItem>();
-  const [page, setPage] = useState<Pages>('tags');
+  const [page, setPage] = useState<Pages>('resource details');
   const [tags, setTags] = useState<Tag[]>();
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -50,11 +56,32 @@ function useInventory() {
   const [hideResourcesLoading, setHideResourcesLoading] = useState(false);
   const [hideOrUnhideHasUpdate, setHideOrUnhideHasUpdate] = useState(false);
 
-  const { toast, setToast, dismissToast } = useToast();
+  const { toast, showToast, dismissToast } = useToast();
   const reloadDiv = useRef<HTMLDivElement>(null);
   const isVisible = useIsVisible(reloadDiv);
   const batchSize: number = 50;
   const router = useRouter();
+
+  /*
+    Check if there are items in searchedInventory:
+    - If yes, check if even one item is not supported.
+    - If unsupported item found, set isSomeServiceUnavailable to true.
+    - If searchedInventory is empty, get all services and check if even one is not supported.
+      - If unsupported service found, set isSomeServiceUnavailable to true.
+  */
+  useEffect(() => {
+    if (searchedInventory) {
+      setIsSomeServiceUnavailable(
+        searchedInventory.some(
+          item => !checkIfServiceIsSupported(item.provider, item.service)
+        )
+      );
+    } else {
+      settingsService.getServices().then(res => {
+        setIsSomeServiceUnavailable(checkIsSomeServiceUnavailable(res));
+      });
+    }
+  }, [searchedInventory]);
 
   /** Reset most of the UI states:
    * - skipped (used to skip results in the data fetch call)
@@ -83,7 +110,7 @@ function useInventory() {
   function getViews(edit?: boolean, viewId?: string, redirect?: boolean) {
     settingsService.getViews().then(res => {
       if (res === Error) {
-        setToast({
+        showToast({
           hasError: true,
           title: `The custom views couldn't be loaded.`,
           message: `There was a problem fetching the views. Please try again.`
@@ -134,7 +161,7 @@ function useInventory() {
         router,
         setSearchedLoading,
         setStatsLoading,
-        setToast,
+        showToast,
         setError,
         setInventoryStats,
         batchSize,
@@ -150,7 +177,7 @@ function useInventory() {
         views,
         setSearchedLoading,
         setStatsLoading,
-        setToast,
+        showToast,
         setError,
         setHiddenResources,
         setInventoryStats,
@@ -175,7 +202,7 @@ function useInventory() {
       filters,
       router,
       batchSize,
-      setToast,
+      showToast,
       setInventory,
       setSkipped
     });
@@ -187,7 +214,7 @@ function useInventory() {
       query,
       batchSize,
       skippedSearch,
-      setToast,
+      showToast,
       setQuery,
       setSearchedInventory,
       setShouldFetchMore,
@@ -201,7 +228,7 @@ function useInventory() {
       router,
       batchSize,
       skippedSearch,
-      setToast,
+      showToast,
       setSearchedInventory,
       setShouldFetchMore,
       setSkippedSearch
@@ -215,7 +242,7 @@ function useInventory() {
       router,
       batchSize,
       skippedSearch,
-      setToast,
+      showToast,
       setSearchedInventory,
       setShouldFetchMore,
       setSkippedSearch
@@ -229,7 +256,7 @@ function useInventory() {
       query,
       batchSize,
       skippedSearch,
-      setToast,
+      showToast,
       setSearchedInventory,
       setShouldFetchMore,
       setSkippedSearch
@@ -243,7 +270,7 @@ function useInventory() {
       query,
       batchSize,
       skippedSearch,
-      setToast,
+      showToast,
       setSearchedInventory,
       setShouldFetchMore,
       setSkippedSearch
@@ -294,7 +321,7 @@ function useInventory() {
         router,
         setSearchedLoading,
         setStatsLoading,
-        setToast,
+        showToast,
         setError,
         setInventoryStats,
         batchSize,
@@ -313,7 +340,7 @@ function useInventory() {
         views,
         setSearchedLoading,
         setStatsLoading,
-        setToast,
+        showToast,
         setError,
         setHiddenResources,
         setInventoryStats,
@@ -365,7 +392,7 @@ function useInventory() {
             .then(res => {
               if (mounted) {
                 if (res.error) {
-                  setToast({
+                  showToast({
                     hasError: true,
                     title: `Search error`,
                     message: `There was an error searching for ${query}. Please refer to the logs and try again.`
@@ -403,7 +430,7 @@ function useInventory() {
         views,
         setSearchedLoading,
         setStatsLoading,
-        setToast,
+        showToast,
         setError,
         setHiddenResources,
         setInventoryStats,
@@ -430,7 +457,7 @@ function useInventory() {
           if (mounted) {
             if (res === Error) {
               setError(true);
-              setToast({
+              showToast({
                 hasError: true,
                 title: `There was an error re-fetching the resources!`,
                 message: `Please refresh the page and try again.`
@@ -461,7 +488,7 @@ function useInventory() {
    */
   function cleanModal() {
     setData(undefined);
-    setPage('tags');
+    setPage('resource details');
   }
 
   /** Opens the modal, as well as:
@@ -553,7 +580,7 @@ function useInventory() {
         if (res === Error) {
           setLoading(false);
           setDeleteLoading(false);
-          setToast({
+          showToast({
             hasError: true,
             title: `Tags were not ${!action ? 'saved' : 'deleted'}!`,
             message: `There was an error ${
@@ -563,7 +590,7 @@ function useInventory() {
         } else {
           setLoading(false);
           setDeleteLoading(false);
-          setToast({
+          showToast({
             hasError: false,
             title: `Tags have been ${!action ? 'saved' : 'deleted'}!`,
             message: `The tags have been ${!action ? 'saved' : 'deleted'} for ${
@@ -599,7 +626,7 @@ function useInventory() {
         if (res === Error) {
           setLoading(false);
           setDeleteLoading(false);
-          setToast({
+          showToast({
             hasError: true,
             title: `Tags were not ${!action ? 'saved' : 'deleted'}!`,
             message: `There was an error ${
@@ -609,7 +636,7 @@ function useInventory() {
         } else {
           setLoading(false);
           setDeleteLoading(false);
-          setToast({
+          showToast({
             hasError: false,
             title: `Tags have been ${!action ? 'saved' : 'deleted'}!`,
             message: `The tags have been ${!action ? 'saved' : 'deleted'} for ${
@@ -680,7 +707,7 @@ function useInventory() {
     settingsService.hideResourceFromView(viewId, payload).then(res => {
       if (res === Error) {
         setHideResourcesLoading(false);
-        setToast({
+        showToast({
           hasError: true,
           title: 'Resources could not be hid.',
           message:
@@ -688,7 +715,7 @@ function useInventory() {
         });
       } else {
         setHideResourcesLoading(false);
-        setToast({
+        showToast({
           hasError: false,
           title: 'Resources are now hidden.',
           message:
@@ -764,7 +791,7 @@ function useInventory() {
     loading,
     updateTags,
     toast,
-    setToast,
+    showToast,
     dismissToast,
     deleteLoading,
     reloadDiv,
@@ -794,7 +821,8 @@ function useInventory() {
     displayFilterIfIsNotCustomView,
     loadingFilters,
     hasFilters,
-    loadingInventory
+    loadingInventory,
+    isSomeServiceUnavailable
   };
 }
 

@@ -12,10 +12,14 @@ export type ButtonProps = {
   gap?: 'md';
   transition?: boolean;
   onClick?: (e?: any) => void;
+  asLink?: boolean;
+  href?: string;
+  target?: string;
 };
 
 function Button({
   children,
+  asLink = false,
   type = 'button',
   style = 'primary',
   size = 'md',
@@ -24,7 +28,9 @@ function Button({
   align,
   gap,
   transition = true,
-  onClick
+  onClick,
+  href,
+  target
 }: ButtonProps) {
   const xxs = 'p-1';
   const xs = 'py-2 px-4';
@@ -52,17 +58,17 @@ function Button({
     transition ? 'transition-colors' : ''
   }`;
 
-  const primary = `${base} font-semibold bg-gradient-to-br from-primary bg-secondary hover:bg-primary active:from-secondary active:bg-secondary text-white disabled:from-primary disabled:bg-secondary disabled:opacity-50`;
+  const primary = `${base} font-semibold bg-gradient-to-br from-darkcyan-500 bg-darkcyan-700 hover:bg-darkcyan-500 active:from-darkcyan-700 active:bg-darkcyan-700 text-white disabled:from-darkcyan-500 disabled:bg-darkcyan-700 disabled:opacity-50`;
 
-  const secondary = `${base} bg-transparent text-primary border-[1.5px] border-primary hover:bg-komiser-130 active:bg-komiser-200 active:text-primary disabled:bg-transparent disabled:opacity-50`;
+  const secondary = `${base} bg-transparent text-darkcyan-500 border-[1.5px] border-darkcyan-500 hover:bg-darkcyan-100 active:bg-cyan-200 active:text-darkcyan-500 disabled:bg-transparent disabled:opacity-50`;
 
-  const ghost = `${base} bg-transparent hover:bg-black-100 active:bg-black-400/20 text-black-800  disabled:bg-transparent disabled:opacity-50`;
+  const ghost = `${base} bg-transparent hover:bg-gray-50 active:bg-gray-300 text-gray-950  disabled:bg-transparent disabled:opacity-50`;
 
-  const text = `font-semibold text-sm text-komiser-700 hover:underline active:text-black-800`;
+  const text = `font-semibold text-sm text-darkcyan-700 hover:underline active:text-gray-950`;
 
-  const dropdown = `text-sm font-medium flex items-center gap-2 justify-start p-2 bg-transparent text-black-400 hover:bg-black-150 active:bg-black-200 rounded disabled:bg-transparent disabled:opacity-50`;
+  const dropdown = `text-sm font-medium flex items-center gap-2 justify-start p-2 bg-transparent text-gray-700 hover:bg-background-ds active:bg-gray-300 rounded disabled:bg-transparent disabled:opacity-50`;
 
-  const deleteStyle = `${base} border-[1.5px] border-error-600 text-error-600 hover:bg-error-100 active:bg-error-600/20 disabled:opacity-50`;
+  const deleteStyle = `${base} border-[1.5px] border-red-500 text-red-500 hover:bg-red-50 active:bg-red-100 disabled:opacity-50`;
 
   function handleStyle() {
     let buttonStyle;
@@ -73,21 +79,37 @@ function Button({
     if (style === 'text') buttonStyle = text;
     if (style === 'dropdown') buttonStyle = dropdown;
     if (style === 'delete') buttonStyle = deleteStyle;
+    if (asLink) buttonStyle = `${buttonStyle} inline-block sm:w-fit-content`;
 
     return buttonStyle;
   }
 
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      className={handleStyle()}
-      disabled={disabled || loading}
-      data-testid={style}
-    >
-      {loading && <LoadingSpinner />}
-      {children}
-    </button>
+    <>
+      {asLink ? (
+        <a
+          onClick={onClick}
+          className={handleStyle()}
+          data-testid={style}
+          href={href}
+          target={target}
+        >
+          {loading && <LoadingSpinner />}
+          {children}
+        </a>
+      ) : (
+        <button
+          type={type}
+          onClick={onClick}
+          className={handleStyle()}
+          disabled={disabled || loading}
+          data-testid={style}
+        >
+          {loading && <LoadingSpinner />}
+          {children}
+        </button>
+      )}
+    </>
   );
 }
 

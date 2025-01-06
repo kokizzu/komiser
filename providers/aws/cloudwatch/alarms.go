@@ -4,26 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/service/pricing"
-	"github.com/aws/aws-sdk-go-v2/service/pricing/types"
 	"strconv"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/pricing"
+	"github.com/aws/aws-sdk-go-v2/service/pricing/types"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	. "github.com/tailwarden/komiser/models"
-	. "github.com/tailwarden/komiser/providers"
+	"github.com/tailwarden/komiser/models"
+	"github.com/tailwarden/komiser/providers"
+	awsUtils "github.com/tailwarden/komiser/providers/aws/utils"
 )
 
 const (
-	RateCode             = "JRTCKXETXF.6YS6EN2CT7"
 	AverageHoursPerMonth = 730
 )
 
-func Alarms(ctx context.Context, client ProviderClient) ([]Resource, error) {
-	resources := make([]Resource, 0)
+func Alarms(ctx context.Context, client providers.ProviderClient) ([]models.Resource, error) {
+	resources := make([]models.Resource, 0)
 	var config cloudwatch.DescribeAlarmsInput
 	// This code temporarily changes the region to "us-east-1" and creates a new Pricing client
 	// then changes the region back to what it was before.
@@ -33,6 +34,11 @@ func Alarms(ctx context.Context, client ProviderClient) ([]Resource, error) {
 	pricingClient := pricing.NewFromConfig(*client.AWSClient)
 	client.AWSClient.Region = oldRegion
 	cloudWatchClient := cloudwatch.NewFromConfig(*client.AWSClient)
+
+	serviceCost, err := awsUtils.GetCostAndUsage(ctx, client.AWSClient.Region, "AmazonCloudWatch")
+	if err != nil {
+		log.Warnln("Couldn't fetch AmazonCloudWatch cost and usage:", err)
+	}
 	for {
 		output, err := cloudWatchClient.DescribeAlarms(ctx, &config)
 		if err != nil {
@@ -44,11 +50,11 @@ func Alarms(ctx context.Context, client ProviderClient) ([]Resource, error) {
 				ResourceARN: alarm.AlarmArn,
 			})
 
-			tags := make([]Tag, 0)
+			tags := make([]models.Tag, 0)
 
 			if err == nil {
 				for _, tag := range outputTags.Tags {
-					tags = append(tags, Tag{
+					tags = append(tags, models.Tag{
 						Key:   *tag.Key,
 						Value: *tag.Value,
 					})
@@ -82,7 +88,7 @@ func Alarms(ctx context.Context, client ProviderClient) ([]Resource, error) {
 				continue
 			}
 
-			resources = append(resources, Resource{
+			resources = append(resources, models.Resource{
 				Provider:   "AWS",
 				Account:    client.Name,
 				Service:    "CloudWatch",
@@ -92,7 +98,10 @@ func Alarms(ctx context.Context, client ProviderClient) ([]Resource, error) {
 				Cost:       costPerMonth,
 				Tags:       tags,
 				FetchedAt:  time.Now(),
-				Link:       fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#alarmsV2:alarm/%s", client.AWSClient.Region, client.AWSClient.Region, *alarm.AlarmName),
+				Metadata: map[string]string{
+					"serviceCost": fmt.Sprint(serviceCost),
+				},
+				Link: fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#alarmsV2:alarm/%s", client.AWSClient.Region, client.AWSClient.Region, *alarm.AlarmName),
 			})
 		}
 
@@ -127,16 +136,14 @@ func calculateCostPerMonth(pricingOutput *pricing.GetProductsOutput) (float64, e
 			for _, details := range onDemand.(map[string]interface{}) {
 				if priceDetails, ok := details.(map[string]interface{})["priceDimensions"].(map[string]interface{}); ok {
 					for _, price := range priceDetails {
-						rateCode := price.(map[string]interface{})["rateCode"].(string)
-						if rateCode == RateCode {
-							usdPrice := price.(map[string]interface{})["pricePerUnit"].(map[string]interface{})["USD"].(string)
-							cost, err := strconv.ParseFloat(usdPrice, 64)
-							if err != nil {
-								return 0, fmt.Errorf("failed to parse cost per month: %w", err)
-							}
-							costPerMonth = cost * AverageHoursPerMonth
-							break
+						usdPrice := price.(map[string]interface{})["pricePerUnit"].(map[string]interface{})["USD"].(string)
+						cost, err := strconv.ParseFloat(usdPrice, 64)
+						if err != nil {
+							return 0, fmt.Errorf("failed to parse cost per month: %w", err)
 						}
+						costPerMonth = cost * AverageHoursPerMonth
+						break
+
 					}
 				}
 			}

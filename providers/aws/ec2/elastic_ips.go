@@ -10,7 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	etype "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/tailwarden/komiser/models"
 	. "github.com/tailwarden/komiser/models"
 	. "github.com/tailwarden/komiser/providers"
 )
@@ -86,7 +88,7 @@ func ElasticIps(ctx context.Context, client ProviderClient) ([]Resource, error) 
 			}
 
 			resourceArn := fmt.Sprintf("arn:aws:ec2:%s:%s:elastic-ip/%s", client.AWSClient.Region, *accountId, *elasticIps.AllocationId)
-
+			relations := getEIPRelations(&elasticIps, fmt.Sprintf("arn:aws:ec2:%s:%s", client.AWSClient.Region, *accountId))
 			resources = append(resources, Resource{
 				Provider:   "AWS",
 				Account:    client.Name,
@@ -98,6 +100,7 @@ func ElasticIps(ctx context.Context, client ProviderClient) ([]Resource, error) 
 				FetchedAt:  time.Now(),
 				Tags:       tags,
 				Link:       fmt.Sprintf("https:/%s.console.aws.amazon.com/ec2/home?region=%s#ElasticIpDetails:AllocationId=%s", client.AWSClient.Region, client.AWSClient.Region, *elasticIps.AllocationId),
+				Relations:  relations,
 			})
 		}
 
@@ -108,8 +111,23 @@ func ElasticIps(ctx context.Context, client ProviderClient) ([]Resource, error) 
 			"service":   "Elastic IP",
 			"resources": len(resources),
 		}).Info("Fetched resources")
+
+		// nolint:staticcheck  // SA4004 ignore this
 		return resources, nil
 	}
+}
+
+func getEIPRelations(ip *etype.Address, resourceArn string) (rel []models.Link) {
+
+	if ip.InstanceId != nil {
+		id := fmt.Sprintf("%s:instance/%s", resourceArn, *ip.InstanceId)
+		rel = append(rel, models.Link{
+			ResourceID: id,
+			Type:       "EC2",
+			Relation:   "USES",
+		})
+	}
+	return
 }
 
 func hoursSince(t time.Time) float64 {

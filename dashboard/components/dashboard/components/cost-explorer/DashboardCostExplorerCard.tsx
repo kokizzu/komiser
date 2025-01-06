@@ -10,8 +10,11 @@ import {
 import Image from 'next/image';
 import { Dispatch, SetStateAction } from 'react';
 import { Bar } from 'react-chartjs-2';
-import SelectCheckbox from '../../../select-checkbox/SelectCheckbox';
-import Select from '../../../select/Select';
+
+import Button from '@components/button/Button';
+import SelectCheckbox from '@components/select-checkbox/SelectCheckbox';
+import Select from '@components/select/Select';
+import { CloudIcon } from '@components/icons';
 import {
   CostExplorerQueryDateProps,
   CostExplorerQueryGranularityProps,
@@ -70,12 +73,12 @@ function DashboardCostExplorerCard({
   });
 
   return (
-    <div className="w-full rounded-lg bg-white py-4 px-6 pb-6">
-      <div className=" -mx-6 flex flex-wrap items-center justify-between gap-4 border-b border-black-200/40 px-6 pb-4">
+    <div className="w-full rounded-lg bg-white px-6 py-4 pb-6">
+      <div className="-mx-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-300 px-6 pb-4">
         <div>
-          <p className="text-sm font-semibold text-black-900">Cost explorer</p>
+          <p className="text-sm font-semibold text-gray-950">Cost explorer</p>
           <div className="mt-1"></div>
-          <p className="text-xs text-black-300">
+          <p className="text-xs text-gray-500">
             Visualise, understand, and manage your infrastructure costs and
             usage
           </p>
@@ -114,18 +117,64 @@ function DashboardCostExplorerCard({
       <div className="mt-8"></div>
       <div className="h-full min-h-[22rem]">
         {chartData && <Bar data={chartData} options={options} />}
-        {!chartData && (
-          <div className="relative flex flex-col items-center">
-            <p className="mt-10 text-lg text-black-900">
-              No data for this time period
-            </p>
-            <Image
-              src="/assets/img/others/empty-state-cost-explorer.png"
-              width={940}
-              height={330}
-              alt="No data to display image"
-              className="absolute top-0"
-            />
+        {/* ⤵ will be removed when cost is supported at Resource level */}
+        {queryGroup === 'Resource' && (
+          <div className="relative flex flex-col items-center bg-empty-cost-explorer h-[330px] w-full">
+            <div className="mt-10 text-lg text-black-900 border border-gray-200 px-8 py-6 flex bg-white">
+              <div>
+                <p className="text-lg">
+                  Cost at resource level not yet supported
+                </p>
+                <p className="text-sm text-gray-400 mb-4">
+                  We recommend our cloud version, Tailwarden, <br />
+                  as it supports accurate costs at the resource level
+                </p>
+
+                <Button
+                  size="sm"
+                  gap="md"
+                  asLink
+                  href="https://tailwarden.com/?utm_source=komiser"
+                  target="_blank"
+                >
+                  <CloudIcon width="24" /> Discover Tailwarden
+                </Button>
+              </div>
+              <Image
+                src="/assets/img/purplin/rocket.svg"
+                alt="Purplin on a Rocket"
+                width="115"
+                height="124"
+              />
+            </div>
+          </div>
+        )}
+        {!chartData && queryGroup !== 'Resource' && (
+          <div className="relative flex flex-col items-center bg-empty-cost-explorer h-[330px] w-full">
+            <div className="mt-10 text-lg text-black-900 border border-gray-200 px-8 py-6 flex bg-white">
+              <div>
+                <p className="text-lg">No data for this time period</p>
+                <p className="text-sm text-gray-400 mb-4">
+                  Our cloud version, Tailwarden, supports <br />
+                  historical costs from certain cloud providers
+                </p>
+                <Button
+                  size="sm"
+                  gap="md"
+                  asLink
+                  href="https://tailwarden.com/?utm_source=komiser"
+                  target="_blank"
+                >
+                  <CloudIcon width="24" /> Discover Tailwarden
+                </Button>
+              </div>
+              <Image
+                src="/assets/img/purplin/rocket.svg"
+                alt="Purplin on a Rocket"
+                width="115"
+                height="124"
+              />
+            </div>
           </div>
         )}
       </div>
